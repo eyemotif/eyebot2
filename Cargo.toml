@@ -5,5 +5,7 @@ edition = "2024"
 authors = ['eyemotif']
 
 [dependencies]
-reqwest = "0.12.12"
+reqwest = { version = "0.12.12", features = ["json"] }
+serde = { version = "1.0.218", features = ["derive"] }
 tokio = { version = "1.43.0", features = ["full"] }
+urlencoding = "2.1.3"
