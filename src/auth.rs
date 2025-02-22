@@ -1,6 +1,5 @@
 use serde::Deserialize;
 
-#[derive(Debug)]
 pub struct Auth {
     refresh_token: String,
     access_token: String,
@@ -39,7 +38,10 @@ impl Auth {
     async fn validate(&mut self) -> reqwest::Result<()> {
         match reqwest::Client::new()
             .post("https://id.twitch.tv/oauth2/validate")
-            .header("Authorization", format!("OAuth {}", self.access_token))
+            .header(
+                reqwest::header::AUTHORIZATION,
+                format!("OAuth {}", self.access_token),
+            )
             .send()
             .await
         {
@@ -61,7 +63,10 @@ impl Auth {
 
         let response: RefreshResponse = reqwest::Client::new()
             .post("https://id.twitch.tv/oauth2/token")
-            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header(
+                reqwest::header::CONTENT_TYPE,
+                reqwest::header::HeaderValue::from_static("application/x-www-form-urlencoded"),
+            )
             .body(urlencoding::encode(&refresh_body).into_owned())
             .send()
             .await
