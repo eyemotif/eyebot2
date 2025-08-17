@@ -2,6 +2,8 @@ use futures_util::StreamExt;
 use tokio::io::AsyncWriteExt;
 use tokio_tungstenite::tungstenite;
 
+use crate::eventsub::payload;
+
 mod auth;
 mod chat;
 mod eventsub;
@@ -109,7 +111,6 @@ async fn handle_message(
 ) -> Result<(), Box<dyn std::error::Error>> {
     match message.metadata.message_type {
         eventsub::MessageType::SessionWelcome => {
-            println!("Got welcome!");
             let payload =
                 serde_json::from_value::<eventsub::payload::SessionWelcome>(message.payload)?;
 
@@ -149,9 +150,27 @@ async fn handle_message(
                     .join(", ")
             );
         }
-        eventsub::MessageType::SessionKeepalive => println!("keepalive"),
+        eventsub::MessageType::SessionKeepalive => (),
         eventsub::MessageType::SessionReconnect => todo!("reconnect"),
-        eventsub::MessageType::Notification => todo!("notification"),
+        eventsub::MessageType::Notification => {
+            let payload =
+                serde_json::from_value::<eventsub::payload::Notification>(message.payload)?;
+            match payload.subscription.subscription_type.as_str() {
+                "channel.chat.message" => {
+                    let event = serde_json::from_value::<eventsub::event::ChannelChatMessage>(
+                        payload.event,
+                    )?;
+
+                    println!(
+                        "{}: {}>{:?}",
+                        event.broadcaster_user_name, event.chatter_user_name, event.message.text
+                    );
+                }
+                unknown_subscription_type => {
+                    println!("Unhandled subscription type: {unknown_subscription_type}");
+                }
+            }
+        }
     }
 
     Ok(())

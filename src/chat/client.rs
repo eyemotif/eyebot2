@@ -25,10 +25,10 @@ impl ChatClient {
         .await?;
 
         Ok(ChatClient {
-            websocket,
-            auth,
             broadcaster_user_id,
             chatter_user_id,
+            auth,
+            websocket,
         })
     }
 }
