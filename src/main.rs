@@ -81,7 +81,6 @@ async fn main() {
                         .write_all(&tungstenite::Message::Pong(data).into_data())
                         .await
                         .expect("Couldn't send pong :(");
-                    println!("Ping!");
                 }
                 tungstenite::Message::Close(close_frame) => {
                     if let Some(close_frame) = close_frame {
@@ -165,6 +164,29 @@ async fn handle_message(
                         "{}: {}>{:?}",
                         event.broadcaster_user_name, event.chatter_user_name, event.message.text
                     );
+                    println!(">> {:?}", event.message.fragments);
+
+                    match event.message.text.to_lowercase().trim() {
+                        "!ping" => {
+                            match client
+                                .send_chat_message("Pong!", Some(event.message_id))
+                                .await
+                            {
+                                Ok(response) => println!("* {response:?}"),
+                                Err(err) => println!("Error sending chat message: {err}"),
+                            }
+                        }
+                        "!pong" => {
+                            match client
+                                .send_chat_message("Ping!", Some(event.message_id))
+                                .await
+                            {
+                                Ok(response) => println!("* {response:?}"),
+                                Err(err) => println!("Error sending chat message: {err}"),
+                            }
+                        }
+                        _ => (),
+                    }
                 }
                 unknown_subscription_type => {
                     println!("Unhandled subscription type: {unknown_subscription_type}");

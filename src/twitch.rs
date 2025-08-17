@@ -1,4 +1,9 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TwitchPostResponse<Inner> {
+    pub data: Vec<Inner>,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CreateEventSubSubscription<Condition> {
@@ -20,4 +25,17 @@ pub enum Transport {
 pub struct BroadcasterAndUserCondition {
     pub broadcaster_user_id: String,
     pub user_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SendChatMessage {
+    pub broadcaster_id: String,
+    pub sender_id: String,
+    pub message: String,
+    pub reply_parent_message_id: Option<String>,
+}
+#[derive(Debug, Clone, Deserialize)]
+pub struct SendChatMessageResponse {
+    pub message_id: String,
+    pub is_sent: bool,
 }

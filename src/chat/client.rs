@@ -31,4 +31,50 @@ impl ChatClient {
             websocket,
         })
     }
+
+    pub async fn send_twitch_api_call<
+        Payload: serde::Serialize,
+        Inner: serde::de::DeserializeOwned,
+    >(
+        &mut self,
+        url: &str,
+        payload: &Payload,
+    ) -> Result<crate::twitch::TwitchPostResponse<Inner>, Box<dyn std::error::Error>> {
+        let response = reqwest::Client::new()
+            .post(url)
+            .bearer_auth(self.auth.get_access_token().await?)
+            .header("Client-Id", self.auth.get_client_id())
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await?;
+
+        let status = response.status();
+        let text = response.text().await?;
+
+        match status {
+            reqwest::StatusCode::OK => Ok(serde_json::from_str(&text)?),
+            status => Err(format!("Error {status} (from {url}): {text}").into()),
+        }
+    }
+
+    pub async fn send_chat_message(
+        &mut self,
+        message: impl Into<String>,
+        reply_parent_message_id: Option<String>,
+    ) -> Result<
+        crate::twitch::TwitchPostResponse<crate::twitch::SendChatMessageResponse>,
+        Box<dyn std::error::Error>,
+    > {
+        self.send_twitch_api_call(
+            "https://api.twitch.tv/helix/chat/messages",
+            &crate::twitch::SendChatMessage {
+                broadcaster_id: self.broadcaster_user_id.clone(),
+                sender_id: self.chatter_user_id.clone(),
+                message: message.into(),
+                reply_parent_message_id,
+            },
+        )
+        .await
+    }
 }
