@@ -2,9 +2,8 @@ use futures_util::StreamExt;
 use tokio::io::AsyncWriteExt;
 use tokio_tungstenite::tungstenite;
 
-use crate::eventsub::payload;
-
 mod auth;
+mod bot;
 mod chat;
 mod eventsub;
 mod twitch;
@@ -156,6 +155,7 @@ async fn handle_message(
                 serde_json::from_value::<eventsub::payload::Notification>(message.payload)?;
             match payload.subscription.subscription_type.as_str() {
                 "channel.chat.message" => {
+                    println!("* {}", payload.event);
                     let event = serde_json::from_value::<eventsub::event::ChannelChatMessage>(
                         payload.event,
                     )?;

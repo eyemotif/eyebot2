@@ -22,9 +22,28 @@ pub struct ChannelChatMessageMessage {
     pub fragments: Vec<ChannelChatMessageMessageFragment>,
 }
 #[derive(Debug, Clone, Deserialize)]
-pub struct ChannelChatMessageMessageFragment {
-    #[serde(rename = "type")]
-    pub fragment_type: String,
-    pub text: String,
-    // TODO: cheermote, emote, mention https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelchatmessage
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ChannelChatMessageMessageFragment {
+    Text {
+        text: String,
+    },
+    Mention {
+        text: String,
+        mention: ChannelChatMessageMessageFragmentMention,
+    },
+    Emote {
+        text: String,
+        emote: ChannelChatMessageMessageFragmentEmote,
+    },
+}
+#[derive(Debug, Clone, Deserialize)]
+#[allow(clippy::struct_field_names)] // External API names
+pub struct ChannelChatMessageMessageFragmentMention {
+    pub user_id: String,
+    pub user_login: String,
+    pub user_name: String,
+}
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChannelChatMessageMessageFragmentEmote {
+    pub id: String,
 }
