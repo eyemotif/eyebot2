@@ -9,7 +9,7 @@ pub trait Command {
     async fn execute(
         &self,
         chat_message: &super::ChatMessage,
-        client: &mut crate::chat::client::ChatClient,
+        client: &mut crate::client::EventSubClient,
     ) -> Result<(), Box<dyn std::error::Error>>;
 }
 

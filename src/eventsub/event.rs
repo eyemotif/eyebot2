@@ -14,7 +14,7 @@ pub struct ChannelChatMessage {
     pub message_id: String,
     pub message: ChannelChatMessageMessage,
     pub badges: Vec<ChannelChatMessageBadge>,
-    // TODO: badges, message_type, cheer, reply
+    // TODO: message_type, cheer, reply
     // https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelchatmessage
 }
 #[derive(Debug, Clone, Deserialize)]

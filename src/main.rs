@@ -4,7 +4,7 @@ use tokio_tungstenite::tungstenite;
 
 mod auth;
 mod bot;
-mod chat;
+mod client;
 mod eventsub;
 mod twitch;
 
@@ -41,7 +41,7 @@ async fn main() {
     let mut chat_client =
     // eye_motif = 214843364
     // eye___bot = 755534245
-        match chat::client::ChatClient::new("214843364".to_owned(), "755534245".to_owned(), auth)
+        match client::EventSubClient::new("214843364".to_owned(), "755534245".to_owned(), auth)
             .await
         {
             Ok(it) => it,
@@ -110,7 +110,7 @@ async fn main() {
 
 async fn handle_message(
     message: eventsub::TwitchMessage,
-    client: &mut chat::client::ChatClient,
+    client: &mut client::EventSubClient,
     builtin_commands: &bot::command::BuiltinCommands,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match message.metadata.message_type {
@@ -129,13 +129,13 @@ async fn handle_message(
                     session_id: payload.session.id,
                 },
             }];
-            for subscription in subscriptions.clone() {
+            for subscription in &subscriptions {
                 let response = reqwest::Client::new()
                     .post("https://api.twitch.tv/helix/eventsub/subscriptions")
                     .bearer_auth(client.auth.get_access_token().await?)
                     .header("Client-Id", client.auth.get_client_id())
                     .header("Content-Type", "application/json")
-                    .json(&subscription)
+                    .json(subscription)
                     .send()
                     .await?;
 
@@ -184,7 +184,7 @@ async fn handle_message(
 
 async fn handle_chat_message(
     message: eventsub::event::ChannelChatMessage,
-    client: &mut chat::client::ChatClient,
+    client: &mut client::EventSubClient,
     builtin_commands: &bot::command::BuiltinCommands,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let message = bot::ChatMessage {
