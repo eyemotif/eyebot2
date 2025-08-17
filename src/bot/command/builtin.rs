@@ -60,8 +60,8 @@ impl Command for Egg {
 pub(super) struct Crouton;
 #[async_trait]
 impl Command for Crouton {
-    fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
-        None
+    fn description(&self, chat_message: &ChatMessage) -> Option<String> {
+        Some("A link to the source of the Crouton".to_owned())
     }
     fn is_match(&self, chat_message: &ChatMessage) -> bool {
         chat_message.message_text().starts_with("!crouton")
@@ -82,7 +82,7 @@ pub(super) struct Corndog;
 #[async_trait]
 impl Command for Corndog {
     fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
-        None
+        Some("A link to the source of the Corndogs".to_owned())
     }
     fn is_match(&self, chat_message: &ChatMessage) -> bool {
         chat_message.message_text().starts_with("!corndog")
