@@ -1,11 +1,20 @@
-pub mod builtin;
+mod builtin;
 
+pub type BuiltinCommands = Vec<Box<dyn Command + 'static>>;
+
+#[async_trait::async_trait]
 pub trait Command {
-    fn description(&self) -> String;
+    fn description(&self, chat_message: &super::ChatMessage) -> Option<String>;
     fn is_match(&self, chat_message: &super::ChatMessage) -> bool;
-    fn execute(
+    async fn execute(
         &self,
         chat_message: &super::ChatMessage,
         client: &mut crate::chat::client::ChatClient,
-    );
+    ) -> Result<(), Box<dyn std::error::Error>>;
+}
+
+pub fn builtin_commands() -> BuiltinCommands {
+    let builtin_commands: BuiltinCommands = vec![Box::new(builtin::Ping)];
+
+    builtin_commands
 }

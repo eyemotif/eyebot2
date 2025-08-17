@@ -58,6 +58,8 @@ async fn main() {
             }
         };
 
+    let builtin_commands = bot::command::builtin_commands();
+
     loop {
         let Some(message) = chat_client.websocket.next().await else {
             break;
@@ -66,10 +68,13 @@ async fn main() {
             Ok(message) => match message {
                 tungstenite::Message::Text(text) => {
                     match serde_json::from_str::<eventsub::TwitchMessage>(text.as_str()) {
-                        Ok(message) => match handle_message(message, &mut chat_client).await {
-                            Ok(()) => (),
-                            Err(err) => println!("Error handling message: {err}"),
-                        },
+                        Ok(message) => {
+                            match handle_message(message, &mut chat_client, &builtin_commands).await
+                            {
+                                Ok(()) => (),
+                                Err(err) => println!("Error handling message: {err}"),
+                            }
+                        }
                         Err(err) => println!("Error parsing message: {err}\n  In {text}"),
                     }
                 }
@@ -106,6 +111,7 @@ async fn main() {
 async fn handle_message(
     message: eventsub::TwitchMessage,
     client: &mut chat::client::ChatClient,
+    builtin_commands: &bot::command::BuiltinCommands,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match message.metadata.message_type {
         eventsub::MessageType::SessionWelcome => {
@@ -155,43 +161,41 @@ async fn handle_message(
                 serde_json::from_value::<eventsub::payload::Notification>(message.payload)?;
             match payload.subscription.subscription_type.as_str() {
                 "channel.chat.message" => {
-                    println!("* {}", payload.event);
+                    // println!("* {}", payload.event);
                     let event = serde_json::from_value::<eventsub::event::ChannelChatMessage>(
                         payload.event,
                     )?;
 
-                    println!(
-                        "{}: {}>{:?}",
-                        event.broadcaster_user_name, event.chatter_user_name, event.message.text
-                    );
-                    println!(">> {:?}", event.message.fragments);
-
-                    match event.message.text.to_lowercase().trim() {
-                        "!ping" => {
-                            match client
-                                .send_chat_message("Pong!", Some(event.message_id))
-                                .await
-                            {
-                                Ok(response) => println!("* {response:?}"),
-                                Err(err) => println!("Error sending chat message: {err}"),
-                            }
-                        }
-                        "!pong" => {
-                            match client
-                                .send_chat_message("Ping!", Some(event.message_id))
-                                .await
-                            {
-                                Ok(response) => println!("* {response:?}"),
-                                Err(err) => println!("Error sending chat message: {err}"),
-                            }
-                        }
-                        _ => (),
-                    }
+                    println!("{}>{}", event.chatter_user_name, event.message.text);
+                    handle_chat_message(event, client, builtin_commands).await?;
                 }
                 unknown_subscription_type => {
                     println!("Unhandled subscription type: {unknown_subscription_type}");
                 }
             }
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_chat_message(
+    message: eventsub::event::ChannelChatMessage,
+    client: &mut chat::client::ChatClient,
+    builtin_commands: &bot::command::BuiltinCommands,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let message = bot::ChatMessage {
+        message_id: message.message_id,
+        chatter_user_id: message.chatter_user_id,
+        chatter_user_login: message.chatter_user_login,
+        chatter_user_name: message.chatter_user_name,
+        badges: message.badges,
+        fragments: message.message.fragments,
+    };
+
+    for builtin_command in builtin_commands {
+        if builtin_command.is_match(&message) {
+            builtin_command.execute(&message, client).await?;
         }
     }
 

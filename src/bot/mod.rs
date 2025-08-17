@@ -3,18 +3,16 @@ use serde::Deserialize;
 pub mod command;
 
 pub type ChatMessageFragment = crate::eventsub::event::ChannelChatMessageMessageFragment;
+pub type ChatMessageBadge = crate::eventsub::event::ChannelChatMessageBadge;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChatMessage {
+    pub message_id: String,
     pub chatter_user_id: String,
     pub chatter_user_login: String,
     pub chatter_user_name: String,
     pub badges: Vec<ChatMessageBadge>,
     pub fragments: Vec<ChatMessageFragment>,
-}
-#[derive(Debug, Clone, Deserialize)]
-pub struct ChatMessageBadge {
-    pub set_id: String,
 }
 
 impl ChatMessage {

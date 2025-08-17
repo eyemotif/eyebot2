@@ -13,14 +13,20 @@ pub struct ChannelChatMessage {
 
     pub message_id: String,
     pub message: ChannelChatMessageMessage,
+    pub badges: Vec<ChannelChatMessageBadge>,
     // TODO: badges, message_type, cheer, reply
     // https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelchatmessage
+}
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChannelChatMessageBadge {
+    pub set_id: String,
 }
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChannelChatMessageMessage {
     pub text: String,
     pub fragments: Vec<ChannelChatMessageMessageFragment>,
 }
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ChannelChatMessageMessageFragment {
