@@ -41,7 +41,7 @@ async fn main() {
     let mut chat_client =
     // eye_motif = 214843364
     // eye___bot = 755534245
-        match chat::client::ChatClient::new("214843364".to_owned(), "214843364".to_owned(), auth)
+        match chat::client::ChatClient::new("214843364".to_owned(), "755534245".to_owned(), auth)
             .await
         {
             Ok(it) => it,
@@ -167,7 +167,10 @@ async fn handle_message(
                     )?;
 
                     println!("{}>{}", event.chatter_user_name, event.message.text);
-                    handle_chat_message(event, client, builtin_commands).await?;
+
+                    if event.chatter_user_id != client.chatter_user_id {
+                        handle_chat_message(event, client, builtin_commands).await?;
+                    }
                 }
                 unknown_subscription_type => {
                     println!("Unhandled subscription type: {unknown_subscription_type}");

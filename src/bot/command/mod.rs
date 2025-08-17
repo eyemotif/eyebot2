@@ -14,7 +14,7 @@ pub trait Command {
 }
 
 pub fn builtin_commands() -> BuiltinCommands {
-    let builtin_commands: BuiltinCommands = vec![Box::new(builtin::Ping)];
+    let builtin_commands: BuiltinCommands = vec![Box::new(builtin::Ping), Box::new(builtin::Egg)];
 
     builtin_commands
 }
