@@ -1,6 +1,6 @@
 use crate::bot::ChatMessage;
 use crate::bot::command::Command;
-use crate::chat::client::ChatClient;
+use crate::client::EventSubClient;
 use async_trait::async_trait;
 
 pub(super) struct Ping;
@@ -19,7 +19,7 @@ impl Command for Ping {
     async fn execute(
         &self,
         chat_message: &ChatMessage,
-        client: &mut ChatClient,
+        client: &mut EventSubClient,
     ) -> Result<(), Box<dyn std::error::Error>> {
         client
             .send_chat_message("Pong!", Some(chat_message.message_id.clone()))
@@ -31,7 +31,7 @@ impl Command for Ping {
 pub(super) struct Egg;
 #[async_trait]
 impl Command for Egg {
-    fn description(&self, chat_message: &ChatMessage) -> Option<String> {
+    fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
         None
     }
 
@@ -42,7 +42,7 @@ impl Command for Egg {
     async fn execute(
         &self,
         chat_message: &ChatMessage,
-        client: &mut ChatClient,
+        client: &mut EventSubClient,
     ) -> Result<(), Box<dyn std::error::Error>> {
         client
             .send_chat_message(

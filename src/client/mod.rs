@@ -1,5 +1,7 @@
+mod tls;
+
 #[derive(Debug)]
-pub struct ChatClient {
+pub struct EventSubClient {
     pub broadcaster_user_id: String,
     pub chatter_user_id: String,
     pub auth: crate::auth::Auth,
@@ -8,7 +10,7 @@ pub struct ChatClient {
     >,
 }
 
-impl ChatClient {
+impl EventSubClient {
     pub async fn new(
         broadcaster_user_id: String,
         chatter_user_id: String,
@@ -19,12 +21,12 @@ impl ChatClient {
             None,
             true,
             Some(tokio_tungstenite::Connector::Rustls(
-                super::tls::create_websocket_tls_client(),
+                tls::create_websocket_tls_client(),
             )),
         )
         .await?;
 
-        Ok(ChatClient {
+        Ok(EventSubClient {
             broadcaster_user_id,
             chatter_user_id,
             auth,
