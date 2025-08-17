@@ -1,11 +1,12 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
 
+pub mod event;
+pub mod payload;
+
 #[derive(Debug, Clone, Deserialize)]
-pub struct TwitchMessage<T = HashMap<String, String>> {
+pub struct TwitchMessage {
     pub metadata: Metadata,
-    pub payload: T,
+    pub payload: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Deserialize)]

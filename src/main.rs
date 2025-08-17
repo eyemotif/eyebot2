@@ -4,7 +4,8 @@ use tokio_tungstenite::tungstenite;
 
 mod auth;
 mod chat;
-mod message;
+mod eventsub;
+mod twitch;
 
 #[tokio::main]
 async fn main() {
@@ -36,20 +37,25 @@ async fn main() {
         Err(err) => println!("{err:?}"),
     }
 
-    let mut chat_client = match chat::client::ChatClient::new().await {
-        Ok(it) => it,
-        Err(err) => {
-            if let tungstenite::Error::Http(response) = err {
-                println!(
-                    "{}",
-                    String::from_utf8_lossy(response.body().as_ref().unwrap())
-                );
-            } else {
-                println!("{err}");
+    let mut chat_client =
+    // eye_motif = 214843364
+    // eye___bot = 755534245
+        match chat::client::ChatClient::new("214843364".to_owned(), "214843364".to_owned(), auth)
+            .await
+        {
+            Ok(it) => it,
+            Err(err) => {
+                if let tungstenite::Error::Http(response) = err {
+                    println!(
+                        "{}",
+                        String::from_utf8_lossy(response.body().as_ref().unwrap())
+                    );
+                } else {
+                    println!("{err}");
+                }
+                return;
             }
-            return;
-        }
-    };
+        };
 
     loop {
         let Some(message) = chat_client.websocket.next().await else {
@@ -57,7 +63,15 @@ async fn main() {
         };
         match message {
             Ok(message) => match message {
-                tungstenite::Message::Text(text) => println!("{text}"),
+                tungstenite::Message::Text(text) => {
+                    match serde_json::from_str::<eventsub::TwitchMessage>(text.as_str()) {
+                        Ok(message) => match handle_message(message, &mut chat_client).await {
+                            Ok(()) => (),
+                            Err(err) => println!("Error handling message: {err}"),
+                        },
+                        Err(err) => println!("Error parsing message: {err}\n  In {text}"),
+                    }
+                }
                 tungstenite::Message::Ping(data) => {
                     chat_client
                         .websocket
@@ -87,4 +101,58 @@ async fn main() {
             },
         }
     }
+}
+
+async fn handle_message(
+    message: eventsub::TwitchMessage,
+    client: &mut chat::client::ChatClient,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match message.metadata.message_type {
+        eventsub::MessageType::SessionWelcome => {
+            println!("Got welcome!");
+            let payload =
+                serde_json::from_value::<eventsub::payload::SessionWelcome>(message.payload)?;
+
+            let subscriptions = [twitch::CreateEventSubSubscription {
+                subscription_type: "channel.chat.message".to_owned(),
+                version: "1".to_owned(),
+                condition: twitch::BroadcasterAndUserCondition {
+                    broadcaster_user_id: client.broadcaster_user_id.clone(),
+                    user_id: client.chatter_user_id.clone(),
+                },
+                transport: twitch::Transport::Websocket {
+                    session_id: payload.session.id,
+                },
+            }];
+            for subscription in subscriptions.clone() {
+                let response = reqwest::Client::new()
+                    .post("https://api.twitch.tv/helix/eventsub/subscriptions")
+                    .bearer_auth(client.auth.get_access_token().await?)
+                    .header("Client-Id", client.auth.get_client_id())
+                    .header("Content-Type", "application/json")
+                    .json(&subscription)
+                    .send()
+                    .await?;
+
+                match response.status() {
+                    reqwest::StatusCode::ACCEPTED => (),
+                    error_status => {
+                        return Err(format!("{error_status}: {}", response.text().await?).into());
+                    }
+                }
+            }
+
+            println!(
+                "subscribed to: {}",
+                subscriptions
+                    .map(|subscription| subscription.subscription_type)
+                    .join(", ")
+            );
+        }
+        eventsub::MessageType::SessionKeepalive => println!("keepalive"),
+        eventsub::MessageType::SessionReconnect => todo!("reconnect"),
+        eventsub::MessageType::Notification => todo!("notification"),
+    }
+
+    Ok(())
 }
