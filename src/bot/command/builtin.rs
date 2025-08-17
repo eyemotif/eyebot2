@@ -57,3 +57,44 @@ impl Command for Egg {
         Ok(())
     }
 }
+pub(super) struct Crouton;
+#[async_trait]
+impl Command for Crouton {
+    fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
+        None
+    }
+    fn is_match(&self, chat_message: &ChatMessage) -> bool {
+        chat_message.message_text().starts_with("!crouton")
+    }
+    async fn execute(
+        &self,
+        chat_message: &ChatMessage,
+        client: &mut EventSubClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        client
+            .send_chat_message("https://crouton.net/", None)
+            .await?;
+        Ok(())
+    }
+}
+
+pub(super) struct Corndog;
+#[async_trait]
+impl Command for Corndog {
+    fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
+        None
+    }
+    fn is_match(&self, chat_message: &ChatMessage) -> bool {
+        chat_message.message_text().starts_with("!corndog")
+    }
+    async fn execute(
+        &self,
+        chat_message: &ChatMessage,
+        client: &mut EventSubClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        client
+            .send_chat_message("https://corndog.io/", None)
+            .await?;
+        Ok(())
+    }
+}
