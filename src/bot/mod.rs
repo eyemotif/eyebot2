@@ -1,18 +1,41 @@
-use serde::Deserialize;
+use crate::eventsub::UserInfo;
 
 pub mod command;
+pub mod redeem;
 
 pub type ChatMessageFragment = crate::eventsub::event::ChannelChatMessageMessageFragment;
 pub type ChatMessageBadge = crate::eventsub::event::ChannelChatMessageBadge;
+pub type PointRedeemReward = crate::eventsub::event::ChannelPointsCustomRewardRedemptionAddReward;
 
-#[derive(Debug, Clone, Deserialize)]
+pub struct Builtins {
+    pub commands: command::BuiltinCommands,
+    pub redeems: redeem::BuiltinRedeems,
+}
+
+#[derive(Debug, Clone)]
 pub struct ChatMessage {
     pub message_id: String,
-    pub chatter_user_id: String,
-    pub chatter_user_login: String,
-    pub chatter_user_name: String,
+    pub chatter_user: UserInfo,
     pub badges: Vec<ChatMessageBadge>,
     pub fragments: Vec<ChatMessageFragment>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PointRedeem {
+    pub id: String,
+    pub broadcaster_user: UserInfo,
+    pub user: UserInfo,
+    pub user_input: String,
+    pub reward: PointRedeemReward,
+}
+
+impl Builtins {
+    pub fn new() -> Self {
+        Self {
+            commands: command::builtin_commands(),
+            redeems: redeem::builtin_redeems(),
+        }
+    }
 }
 
 impl ChatMessage {

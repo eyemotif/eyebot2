@@ -58,7 +58,7 @@ async fn main() {
             }
         };
 
-    let builtin_commands = bot::command::builtin_commands();
+    let builtins = bot::Builtins::new();
 
     loop {
         let Some(message) = client.websocket.next().await else {
@@ -69,7 +69,7 @@ async fn main() {
                 tungstenite::Message::Text(text) => {
                     match serde_json::from_str::<eventsub::TwitchMessage>(text.as_str()) {
                         Ok(message) => {
-                            match handle_message(message, &mut client, &builtin_commands).await {
+                            match handle_message(message, &mut client, &builtins).await {
                                 Ok(()) => (),
                                 Err(err) => println!("Error handling message: {err}"),
                             }
@@ -110,7 +110,7 @@ async fn main() {
 async fn handle_message(
     message: eventsub::TwitchMessage,
     client: &mut client::EventSubClient,
-    builtin_commands: &bot::command::BuiltinCommands,
+    builtins: &bot::Builtins,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match message.metadata.message_type {
         eventsub::MessageType::SessionWelcome => {
@@ -179,7 +179,7 @@ async fn handle_message(
                     println!("{}>{}", event.chatter_user_name, event.message.text);
 
                     if event.chatter_user_id != client.chatter_user_id {
-                        handle_chat_message(event, client, builtin_commands).await?;
+                        handle_chat_message(event, client, builtins).await?;
                     }
                 }
                 "channel.channel_points_custom_reward_redemption.add" => {
@@ -192,11 +192,13 @@ async fn handle_message(
                         event.user.name,
                         event.reward.title,
                         if event.user_input.is_empty() {
-                            "!"
+                            ""
                         } else {
                             &format!(": {:?}", event.user_input)
                         }
                     );
+
+                    handle_point_redeem(event, client, builtins).await?;
                 }
                 unknown_subscription_type => {
                     println!("Unhandled subscription type: {unknown_subscription_type}");
@@ -211,20 +213,44 @@ async fn handle_message(
 async fn handle_chat_message(
     message: eventsub::event::ChannelChatMessage,
     client: &mut client::EventSubClient,
-    builtin_commands: &bot::command::BuiltinCommands,
+    builtins: &bot::Builtins,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let message = bot::ChatMessage {
         message_id: message.message_id,
-        chatter_user_id: message.chatter_user_id,
-        chatter_user_login: message.chatter_user_login,
-        chatter_user_name: message.chatter_user_name,
+        chatter_user: crate::eventsub::UserInfo {
+            id: message.chatter_user_id,
+            login: message.chatter_user_login,
+            name: message.chatter_user_name,
+        },
         badges: message.badges,
         fragments: message.message.fragments,
     };
 
-    for builtin_command in builtin_commands {
+    for builtin_command in &builtins.commands {
         if builtin_command.is_match(&message) {
             builtin_command.execute(&message, client).await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_point_redeem(
+    redeem: eventsub::event::ChannelPointsCustomRewardRedemptionAdd,
+    client: &mut client::EventSubClient,
+    builtins: &bot::Builtins,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let redeem = bot::PointRedeem {
+        id: redeem.id,
+        broadcaster_user: redeem.broadcaster_user.into(),
+        user: redeem.user,
+        user_input: redeem.user_input,
+        reward: redeem.reward,
+    };
+
+    for builtin_redeem in &builtins.redeems {
+        if builtin_redeem.is_match(&redeem) {
+            builtin_redeem.execute(&redeem, client).await?;
         }
     }
 
