@@ -6,12 +6,29 @@ pub struct TwitchPostResponse<Inner> {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct CreateEventSubSubscription<Condition> {
+pub struct CreateEventSubSubscription {
     #[serde(rename = "type")]
     pub subscription_type: String,
     pub version: String,
-    pub condition: Condition,
+    pub condition: serde_json::Value,
     pub transport: Transport,
+}
+impl CreateEventSubSubscription {
+    pub fn new(
+        subscription_type: &str,
+        version: &str,
+        condition: impl serde::Serialize,
+        session_id: &str,
+    ) -> serde_json::Result<Self> {
+        Ok(Self {
+            subscription_type: subscription_type.to_owned(),
+            version: version.to_owned(),
+            condition: serde_json::to_value(condition)?,
+            transport: crate::twitch::Transport::Websocket {
+                session_id: session_id.to_owned(),
+            },
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -25,6 +42,10 @@ pub enum Transport {
 pub struct BroadcasterAndUserCondition {
     pub broadcaster_user_id: String,
     pub user_id: String,
+}
+#[derive(Debug, Clone, Serialize)]
+pub struct BroadcasterCondition {
+    pub broadcaster_user_id: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

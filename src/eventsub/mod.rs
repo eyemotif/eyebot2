@@ -23,3 +23,32 @@ pub enum MessageType {
 
     Notification,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BroadcasterUserInfo {
+    #[serde(rename = "broadcaster_user_id")]
+    pub id: String,
+    #[serde(rename = "broadcaster_user_login")]
+    pub login: String,
+    #[serde(rename = "broadcaster_user_name")]
+    pub name: String,
+}
+#[derive(Debug, Clone, Deserialize)]
+pub struct UserInfo {
+    #[serde(rename = "user_id")]
+    pub id: String,
+    #[serde(rename = "user_login")]
+    pub login: String,
+    #[serde(rename = "user_name")]
+    pub name: String,
+}
+
+impl Into<UserInfo> for BroadcasterUserInfo {
+    fn into(self) -> UserInfo {
+        UserInfo {
+            id: self.id,
+            login: self.login,
+            name: self.name,
+        }
+    }
+}

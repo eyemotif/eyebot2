@@ -2,9 +2,8 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChannelChatMessage {
-    pub broadcaster_user_id: String,
-    pub broadcaster_user_login: String,
-    pub broadcaster_user_name: String,
+    #[serde(flatten)]
+    pub broadcaster_user: super::BroadcasterUserInfo,
 
     pub chatter_user_id: String,
     pub chatter_user_login: String,
@@ -35,7 +34,7 @@ pub enum ChannelChatMessageMessageFragment {
     },
     Mention {
         text: String,
-        mention: ChannelChatMessageMessageFragmentMention,
+        mention: super::UserInfo,
     },
     Emote {
         text: String,
@@ -43,13 +42,25 @@ pub enum ChannelChatMessageMessageFragment {
     },
 }
 #[derive(Debug, Clone, Deserialize)]
-#[allow(clippy::struct_field_names)] // External API names
-pub struct ChannelChatMessageMessageFragmentMention {
-    pub user_id: String,
-    pub user_login: String,
-    pub user_name: String,
-}
-#[derive(Debug, Clone, Deserialize)]
 pub struct ChannelChatMessageMessageFragmentEmote {
     pub id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChannelPointsCustomRewardRedemptionAdd {
+    pub id: String,
+    #[serde(flatten)]
+    pub broadcaster_user: super::BroadcasterUserInfo,
+    #[serde(flatten)]
+    pub user: super::UserInfo,
+    pub user_input: String,
+    pub reward: ChannelPointsCustomRewardRedemptionAddReward,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChannelPointsCustomRewardRedemptionAddReward {
+    pub id: String,
+    pub title: String,
+    pub cost: u64,
+    pub prompt: String,
 }
