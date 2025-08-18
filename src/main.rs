@@ -41,7 +41,7 @@ async fn main() {
     let mut client =
     // eye_motif = 214843364
     // eye___bot = 755534245
-        match client::EventSubClient::new("214843364".to_owned(), "755534245".to_owned(), auth)
+        match client::EventSubClient::new("214843364".to_owned(), "214843364".to_owned(), auth)
             .await
         {
             Ok(it) => it,
@@ -117,17 +117,28 @@ async fn handle_message(
             let payload =
                 serde_json::from_value::<eventsub::payload::SessionWelcome>(message.payload)?;
 
-            let subscriptions = [twitch::CreateEventSubSubscription {
-                subscription_type: "channel.chat.message".to_owned(),
-                version: "1".to_owned(),
-                condition: twitch::BroadcasterAndUserCondition {
-                    broadcaster_user_id: client.broadcaster_user_id.clone(),
-                    user_id: client.chatter_user_id.clone(),
-                },
-                transport: twitch::Transport::Websocket {
-                    session_id: payload.session.id,
-                },
-            }];
+            let subscriptions = [
+                twitch::CreateEventSubSubscription::new(
+                    "channel.chat.message",
+                    "1",
+                    twitch::BroadcasterAndUserCondition {
+                        broadcaster_user_id: client.broadcaster_user_id.clone(),
+                        user_id: client.chatter_user_id.clone(),
+                    },
+                    &payload.session.id,
+                )
+                .expect("Constant value should serialize"),
+                twitch::CreateEventSubSubscription::new(
+                    "channel.channel_points_custom_reward_redemption.add",
+                    "1",
+                    twitch::BroadcasterCondition {
+                        broadcaster_user_id: client.broadcaster_user_id.clone(),
+                    },
+                    &payload.session.id,
+                )
+                .expect("Constant value should serialize"),
+            ];
+
             for subscription in &subscriptions {
                 let response = reqwest::Client::new()
                     .post("https://api.twitch.tv/helix/eventsub/subscriptions")
@@ -158,9 +169,9 @@ async fn handle_message(
         eventsub::MessageType::Notification => {
             let payload =
                 serde_json::from_value::<eventsub::payload::Notification>(message.payload)?;
+            // println!("* {payload:?}");
             match payload.subscription.subscription_type.as_str() {
                 "channel.chat.message" => {
-                    // println!("* {}", payload.event);
                     let event = serde_json::from_value::<eventsub::event::ChannelChatMessage>(
                         payload.event,
                     )?;
@@ -170,6 +181,22 @@ async fn handle_message(
                     if event.chatter_user_id != client.chatter_user_id {
                         handle_chat_message(event, client, builtin_commands).await?;
                     }
+                }
+                "channel.channel_points_custom_reward_redemption.add" => {
+                    let event = serde_json::from_value::<
+                        eventsub::event::ChannelPointsCustomRewardRedemptionAdd,
+                    >(payload.event)?;
+
+                    println!(
+                        "{} redeemed {}{}",
+                        event.user.name,
+                        event.reward.title,
+                        if event.user_input.is_empty() {
+                            "!"
+                        } else {
+                            &format!(": {:?}", event.user_input)
+                        }
+                    );
                 }
                 unknown_subscription_type => {
                     println!("Unhandled subscription type: {unknown_subscription_type}");
