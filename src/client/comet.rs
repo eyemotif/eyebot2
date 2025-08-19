@@ -1,4 +1,4 @@
-use futures_util::StreamExt;
+use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -9,8 +9,18 @@ pub struct CometManager(Arc<Mutex<CometManagerInternals>>);
 
 #[derive(Debug)]
 struct CometManagerInternals {
-    websocket: Option<tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>>,
+    websocket: Option<SplitSocket>,
     state: String,
+}
+#[derive(Debug)]
+struct SplitSocket {
+    sender: futures_util::stream::SplitSink<
+        tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>,
+        tokio_tungstenite::tungstenite::Message,
+    >,
+    receiver: futures_util::stream::SplitStream<
+        tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>,
+    >,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -29,6 +39,7 @@ pub enum CometMessage {
     Chat {
         user_id: String,
         chat: Vec<CometChatFragment>,
+        meta: CometChatMetadata,
     },
     ChatUser {
         user_id: String,
@@ -48,25 +59,28 @@ pub enum CometChatFragment {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub struct CometChatter {
-    display_name: String,
-    name_color: String,
-    badges: Vec<String>,
+    pub display_name: String,
+    pub name_color: String,
+    pub badges: Vec<String>,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CometChatMetadata {
+    None,
+    Action,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum CometResponse {
     Ok {
-        tag: String,
         state: String,
     },
     Data {
-        tag: String,
         state: String,
         payload: String,
     },
     Error {
-        tag: String,
         state: String,
         is_internal: bool,
         message: String,
@@ -95,10 +109,14 @@ impl CometManager {
 
             println!("Comet connected!");
 
-            internals.lock().await.websocket = Some(ws);
+            let (sender, receiver) = ws.split();
+            internals.lock().await.websocket = Some(SplitSocket { sender, receiver });
         });
 
         Self(self_internals)
+    }
+    pub async fn is_connected(&self) -> bool {
+        self.0.lock().await.websocket.is_some()
     }
     pub async fn send_message(
         &self,
@@ -111,8 +129,10 @@ impl CometManager {
             .websocket
             .as_mut()
             .ok_or("No comet connection")?
-            .get_mut()
-            .write_all(&tokio_tungstenite::tungstenite::Message::Text(outbound.into()).into_data())
+            .sender
+            .send(tokio_tungstenite::tungstenite::Message::Text(
+                outbound.into(),
+            ))
             .await?;
 
         loop {
@@ -124,6 +144,7 @@ impl CometManager {
                     .websocket
                     .as_mut()
                     .ok_or("No comet connection")?
+                    .receiver
                     .next()
                     .await
                     .transpose()?
@@ -145,8 +166,8 @@ impl CometManager {
                         .websocket
                         .as_mut()
                         .ok_or("No comet connection")?
-                        .get_mut()
-                        .write_all(&tokio_tungstenite::tungstenite::Message::Pong(data).into_data())
+                        .sender
+                        .send(tokio_tungstenite::tungstenite::Message::Pong(data))
                         .await?;
                 }
                 tokio_tungstenite::tungstenite::Message::Close(_) => {

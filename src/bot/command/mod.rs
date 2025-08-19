@@ -19,6 +19,7 @@ pub fn builtin_commands() -> BuiltinCommands {
         Box::new(builtin::Egg),
         Box::new(builtin::Crouton),
         Box::new(builtin::Corndog),
+        Box::new(builtin::Comet),
     ];
 
     builtin_commands
