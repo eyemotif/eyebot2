@@ -1,3 +1,4 @@
+pub mod comet;
 mod tls;
 
 #[derive(Debug)]
@@ -8,6 +9,7 @@ pub struct EventSubClient {
     pub websocket: tokio_tungstenite::WebSocketStream<
         tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
     >,
+    pub comet_manager: comet::CometManager,
 }
 
 impl EventSubClient {
@@ -31,6 +33,7 @@ impl EventSubClient {
             chatter_user_id,
             auth,
             websocket,
+            comet_manager: comet::CometManager::new(),
         })
     }
 

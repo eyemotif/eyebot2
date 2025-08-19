@@ -43,12 +43,12 @@ pub struct UserInfo {
     pub name: String,
 }
 
-impl Into<UserInfo> for BroadcasterUserInfo {
-    fn into(self) -> UserInfo {
+impl From<BroadcasterUserInfo> for UserInfo {
+    fn from(val: BroadcasterUserInfo) -> Self {
         UserInfo {
-            id: self.id,
-            login: self.login,
-            name: self.name,
+            id: val.id,
+            login: val.login,
+            name: val.name,
         }
     }
 }
