@@ -19,3 +19,18 @@ impl Redeem for Pop {
         Ok(())
     }
 }
+pub(super) struct First;
+#[async_trait]
+impl Redeem for First{
+    fn is_match(&self, redeem: &PointRedeem) -> bool {
+        redeem.reward.title == "First"
+    }
+    async fn execute(
+        &self,
+        redeem: &PointRedeem,
+        client: &mut EventSubClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        client.send_chat_message(format!("@{} Congrats on being first to the stream!",redeem.user.name), None).await?;
+        Ok(())
+    }
+}

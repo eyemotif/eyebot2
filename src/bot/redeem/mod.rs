@@ -13,7 +13,10 @@ pub trait Redeem {
 }
 
 pub fn builtin_redeems() -> BuiltinRedeems {
-    let builtin_commands: BuiltinRedeems = vec![Box::new(builtin::Pop)];
+    let builtin_commands: BuiltinRedeems = vec![
+        Box::new(builtin::Pop),
+        Box::new(builtin::First),
+        ];
 
     builtin_commands
 }
