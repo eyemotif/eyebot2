@@ -178,9 +178,9 @@ async fn handle_message(
 
                     println!("{}>{}", event.chatter_user_name, event.message.text);
 
-                    if event.chatter_user_id != client.chatter_user_id {
-                        handle_chat_message(event, client, builtins).await?;
-                    }
+                    // if event.chatter_user_id != client.chatter_user_id {
+                    handle_chat_message(event, client, builtins).await?;
+                    // }
                 }
                 "channel.channel_points_custom_reward_redemption.add" => {
                     let event = serde_json::from_value::<
@@ -224,6 +224,7 @@ async fn handle_chat_message(
         },
         badges: message.badges,
         fragments: message.message.fragments,
+        color: (!message.color.is_empty()).then_some(message.color),
     };
 
     for builtin_command in &builtins.commands {

@@ -60,7 +60,7 @@ impl Command for Egg {
 pub(super) struct Crouton;
 #[async_trait]
 impl Command for Crouton {
-    fn description(&self, chat_message: &ChatMessage) -> Option<String> {
+    fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
         Some("A link to the source of the Crouton".to_owned())
     }
     fn is_match(&self, chat_message: &ChatMessage) -> bool {
@@ -68,7 +68,7 @@ impl Command for Crouton {
     }
     async fn execute(
         &self,
-        chat_message: &ChatMessage,
+        _chat_message: &ChatMessage,
         client: &mut EventSubClient,
     ) -> Result<(), Box<dyn std::error::Error>> {
         client
@@ -89,12 +89,119 @@ impl Command for Corndog {
     }
     async fn execute(
         &self,
-        chat_message: &ChatMessage,
+        _chat_message: &ChatMessage,
         client: &mut EventSubClient,
     ) -> Result<(), Box<dyn std::error::Error>> {
         client
             .send_chat_message("https://corndog.io/", None)
             .await?;
+        Ok(())
+    }
+}
+
+pub(super) struct Comet;
+#[async_trait]
+impl Command for Comet {
+    fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
+        None
+    }
+    fn is_match(&self, _chat_message: &ChatMessage) -> bool {
+        true
+    }
+    async fn execute(
+        &self,
+        chat_message: &ChatMessage,
+        client: &mut EventSubClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if !client.comet_manager.is_connected().await {
+            return Ok(());
+        }
+
+        loop {
+            let response = client
+                .comet_manager
+                .send_message(&crate::client::comet::CometMessage::Chat {
+                    user_id: chat_message.chatter_user.id.clone(),
+                    chat: chat_message
+                        .fragments
+                        .iter()
+                        .map(|fragment| {
+                            match fragment {
+                        crate::eventsub::event::ChannelChatMessageMessageFragment::Text {
+                            text,
+                        }
+                        | crate::eventsub::event::ChannelChatMessageMessageFragment::Mention {
+                            text,
+                            ..
+                        } => crate::client::comet::CometChatFragment::Text {
+                            content: text.clone(),
+                        },
+                        crate::eventsub::event::ChannelChatMessageMessageFragment::Emote {
+                            emote,
+                            ..
+                        } => crate::client::comet::CometChatFragment::Emote {
+                            emote: emote.id.clone(),
+                        },
+                    }
+                        })
+                        .collect(),
+                    meta: crate::client::comet::CometChatMetadata::None, // TODO: check for /me
+                })
+                .await?;
+
+            match response {
+                crate::client::comet::CometResponse::Ok { .. } => (),
+                crate::client::comet::CometResponse::Data { .. } => {
+                    // comet will request info for a twitch user id if it is new
+                    let response = client
+                        .comet_manager
+                        .send_message(&crate::client::comet::CometMessage::ChatUser {
+                            user_id: chat_message.chatter_user.id.clone(),
+                            chat_info: crate::client::comet::CometChatter {
+                                display_name: chat_message.chatter_user.name.clone(),
+                                name_color: match &chat_message.color {
+                                    Some(it) => it.clone(),
+                                    None => "#000000".to_owned(),
+                                }, // TODO
+                                badges: Vec::new(), // TODO
+                            },
+                        })
+                        .await?;
+                    match response {
+                        crate::client::comet::CometResponse::Ok { .. } => (),
+                        crate::client::comet::CometResponse::Data { .. } => {
+                            unreachable!("Got Data from ChatUser message")
+                        }
+                        crate::client::comet::CometResponse::Error {
+                            message,
+                            is_internal,
+                            ..
+                        } => {
+                            println!(
+                                "Comet error sending ChatUser message: {} {}",
+                                message,
+                                if is_internal { "(internal)" } else { "" }
+                            );
+                            break;
+                        }
+                    }
+                    continue;
+                }
+                crate::client::comet::CometResponse::Error {
+                    is_internal,
+                    message,
+                    ..
+                } => {
+                    println!(
+                        "Comet error sending Chat message: {} {}",
+                        message,
+                        if is_internal { "(internal)" } else { "" }
+                    );
+                }
+            }
+            break;
+        }
+
         Ok(())
     }
 }
