@@ -16,6 +16,8 @@ pub fn builtin_redeems() -> BuiltinRedeems {
     let builtin_commands: BuiltinRedeems = vec![
         Box::new(builtin::Pop),
         Box::new(builtin::First),
+        Box::new(builtin::Lurky),
+        Box::new(builtin::Lurky),
         ];
 
     builtin_commands
