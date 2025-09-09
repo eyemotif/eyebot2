@@ -192,9 +192,9 @@ async fn handle_message(
                         event.user.name,
                         event.reward.title,
                         if event.user_input.is_empty() {
-                            ""
+                            String::new()
                         } else {
-                            &format!(": {:?}", event.user_input)
+                            format!(": {:?}", event.user_input)
                         }
                     );
 
