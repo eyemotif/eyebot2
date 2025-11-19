@@ -18,6 +18,7 @@ pub struct ChatMessage {
     pub chatter_user: UserInfo,
     pub badges: Vec<ChatMessageBadge>,
     pub fragments: Vec<ChatMessageFragment>,
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Clone)]
