@@ -30,6 +30,16 @@ async fn main() {
         .expect("Could not read client secret")
         .trim()
         .to_owned();
+    let broadcaster_user_id = tokio::fs::read_to_string("./tokens/broadcasterid")
+        .await
+        .expect("Could not read broadcaster ID")
+        .trim()
+        .to_owned();
+    let chatter_user_id = tokio::fs::read_to_string("./tokens/chatterid")
+        .await
+        .expect("Could not read chatter ID")
+        .trim()
+        .to_owned();
 
     let mut auth = auth::Auth::new(refresh_token, access_token, client_id, client_secret);
 
@@ -39,11 +49,7 @@ async fn main() {
     }
 
     let mut client =
-    // eye_motif = 214843364
-    // eye___bot = 755534245
-        match client::EventSubClient::new("214843364".to_owned(), "214843364".to_owned(), auth)
-            .await
-        {
+        match client::EventSubClient::new(broadcaster_user_id, chatter_user_id, auth).await {
             Ok(it) => it,
             Err(err) => {
                 if let tungstenite::Error::Http(response) = err {
