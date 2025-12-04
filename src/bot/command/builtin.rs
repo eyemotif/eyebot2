@@ -212,7 +212,10 @@ pub(super) struct CometGetComponents;
 #[async_trait]
 impl Command for CometGetComponents {
     fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
-        Some("A link to the source of the Corndogs".to_owned())
+        Some(
+            "!comet:get <type> -- Get the list of a type of comet component. Component types: audio"
+                .to_owned(),
+        )
     }
     fn is_match(&self, chat_message: &ChatMessage) -> bool {
         chat_message.message_text().starts_with("!comet:get")
@@ -261,6 +264,117 @@ impl Command for CometGetComponents {
             } => {
                 println!(
                     "Comet error sending GetComponents message: {} {}",
+                    message,
+                    if is_internal { "(internal)" } else { "" }
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub(super) struct CometSetAudioComponentVolume;
+#[async_trait]
+#[async_trait]
+impl Command for CometSetAudioComponentVolume {
+    fn description(&self, chat_message: &ChatMessage) -> Option<String> {
+        chat_message.chatter_is_moderator().then_some("!comet:setvolume <audio-name> <volume: 0.0-1.0> -- Set the volume of a comet audio component".to_owned())
+    }
+    fn is_match(&self, chat_message: &ChatMessage) -> bool {
+        chat_message.chatter_is_moderator()
+            && chat_message.message_text().starts_with("!comet:setvolume")
+    }
+    async fn execute(
+        &self,
+        chat_message: &ChatMessage,
+        client: &mut EventSubClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let chat_message_text = chat_message.message_text();
+        let Some((audio_component_name, volume_value)) = chat_message_text
+            .strip_prefix("!comet:setvolume")
+            .expect("CometGetComponents: Checked by is_match")
+            .trim()
+            .split_once(' ')
+        else {
+            client
+                .send_chat_message(
+                    "!comet:setvolume expects 2 arguments",
+                    Some(chat_message.message_id.clone()),
+                )
+                .await?;
+            return Ok(());
+        };
+        let Ok(volume_value) = volume_value.parse::<f64>() else {
+            client
+                .send_chat_message(
+                    format!("!comet:setvolume expects a number as its second argument, got {volume_value:?}"),
+                    Some(chat_message.message_id.clone()),
+                )
+                .await?;
+            return Ok(());
+        };
+
+        let response = client
+            .comet_manager
+            .send_message(&comet::Message::AudioVolume {
+                audio_component_name: audio_component_name.to_owned(),
+                volume_value,
+            })
+            .await?;
+        match response {
+            comet::Response::Ok { .. } => (),
+            comet::Response::Data { .. } => unreachable!("AudioVolume will never respond Data"),
+            comet::Response::Error {
+                is_internal,
+                message,
+                ..
+            } => {
+                println!(
+                    "Comet error sending AudioVolume message: {} {}",
+                    message,
+                    if is_internal { "(internal)" } else { "" }
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
+pub(super) struct CometClearAudioQueue;
+#[async_trait]
+#[async_trait]
+impl Command for CometClearAudioQueue {
+    fn description(&self, chat_message: &ChatMessage) -> Option<String> {
+        chat_message
+            .chatter_is_moderator()
+            .then_some("Clear the comet audio queue".to_owned())
+    }
+    fn is_match(&self, chat_message: &ChatMessage) -> bool {
+        chat_message.chatter_is_moderator()
+            && chat_message.message_text().starts_with("!comet:clearaudio")
+    }
+    async fn execute(
+        &self,
+        _chat_message: &ChatMessage,
+        client: &mut EventSubClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let response = client
+            .comet_manager
+            .send_message(&comet::Message::AudioClear {})
+            .await?;
+        match response {
+            comet::Response::Ok { .. } => (),
+            comet::Response::Data { .. } => {
+                unreachable!("AudioClear will never respond Data")
+            }
+            comet::Response::Error {
+                is_internal,
+                message,
+                ..
+            } => {
+                println!(
+                    "Comet error sending AudioClear message: {} {}",
                     message,
                     if is_internal { "(internal)" } else { "" }
                 );
