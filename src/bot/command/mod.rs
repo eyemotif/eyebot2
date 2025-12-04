@@ -19,6 +19,10 @@ pub fn builtin_commands() -> BuiltinCommands {
         Box::new(builtin::Egg),
         Box::new(builtin::Crouton),
         Box::new(builtin::Corndog),
+        Box::new(builtin::Comet),
+        Box::new(builtin::CometGetComponents),
+        Box::new(builtin::CometSetAudioComponentVolume),
+        Box::new(builtin::CometClearAudioQueue),
     ];
 
     builtin_commands
