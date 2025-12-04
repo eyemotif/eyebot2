@@ -6,9 +6,20 @@ pub enum Message {
     Register {
         state: String,
     },
-    GetComponents {}, // TODO
-    PlayAudio {},     // TODO
-    AudioVolume {},   // TODO
+    GetComponents {
+        #[serde(rename = "type")]
+        component_type: ComponentType,
+    },
+    PlayAudio {
+        data: Vec<Vec<AudioComponent>>,
+    },
+    AudioVolume {
+        #[serde(rename = "name")]
+        audio_component_name: String,
+        #[serde(rename = "value")]
+        /// A floating point value between 0.0 and 1.0
+        volume_value: f64,
+    },
     AudioClear {},
     ChatSetEmotes {
         username: String,
@@ -46,6 +57,16 @@ pub struct Chatter {
 pub enum ChatMetadata {
     None,
     Action,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ComponentType {
+    Audio,
+}
+#[derive(Debug, Clone, Serialize)]
+pub struct AudioComponent {
+    pub name: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
