@@ -1,6 +1,7 @@
 use crate::bot::ChatMessage;
 use crate::bot::command::Command;
 use crate::client::EventSubClient;
+use crate::comet;
 use async_trait::async_trait;
 
 pub(super) struct Ping;
@@ -120,7 +121,7 @@ impl Command for Comet {
         loop {
             let response = client
                 .comet_manager
-                .send_message(&crate::client::comet::CometMessage::Chat {
+                .send_message(&comet::Message::Chat {
                     user_id: chat_message.chatter_user.id.clone(),
                     chat: chat_message
                         .fragments
@@ -133,31 +134,31 @@ impl Command for Comet {
                         | crate::eventsub::event::ChannelChatMessageMessageFragment::Mention {
                             text,
                             ..
-                        } => crate::client::comet::CometChatFragment::Text {
+                        } => comet::ChatFragment::Text {
                             content: text.clone(),
                         },
                         crate::eventsub::event::ChannelChatMessageMessageFragment::Emote {
                             emote,
                             ..
-                        } => crate::client::comet::CometChatFragment::Emote {
+                        } => comet::ChatFragment::Emote {
                             emote: emote.id.clone(),
                         },
                     }
                         })
                         .collect(),
-                    meta: crate::client::comet::CometChatMetadata::None, // TODO: check for /me
+                    meta: comet::ChatMetadata::None, // TODO: check for /me
                 })
                 .await?;
 
             match response {
-                crate::client::comet::CometResponse::Ok { .. } => (),
-                crate::client::comet::CometResponse::Data { .. } => {
+                comet::Response::Ok { .. } => (),
+                comet::Response::Data { .. } => {
                     // comet will request info for a twitch user id if it is new
                     let response = client
                         .comet_manager
-                        .send_message(&crate::client::comet::CometMessage::ChatUser {
+                        .send_message(&comet::Message::ChatUser {
                             user_id: chat_message.chatter_user.id.clone(),
-                            chat_info: crate::client::comet::CometChatter {
+                            chat_info: comet::Chatter {
                                 display_name: chat_message.chatter_user.name.clone(),
                                 name_color: match &chat_message.color {
                                     Some(it) => it.clone(),
@@ -168,11 +169,11 @@ impl Command for Comet {
                         })
                         .await?;
                     match response {
-                        crate::client::comet::CometResponse::Ok { .. } => (),
-                        crate::client::comet::CometResponse::Data { .. } => {
+                        comet::Response::Ok { .. } => (),
+                        comet::Response::Data { .. } => {
                             unreachable!("Got Data from ChatUser message")
                         }
-                        crate::client::comet::CometResponse::Error {
+                        comet::Response::Error {
                             message,
                             is_internal,
                             ..
@@ -187,7 +188,7 @@ impl Command for Comet {
                     }
                     continue;
                 }
-                crate::client::comet::CometResponse::Error {
+                comet::Response::Error {
                     is_internal,
                     message,
                     ..

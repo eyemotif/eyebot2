@@ -5,6 +5,7 @@ use tokio_tungstenite::tungstenite;
 mod auth;
 mod bot;
 mod client;
+mod comet;
 mod eventsub;
 mod twitch;
 

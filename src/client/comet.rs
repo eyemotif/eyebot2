@@ -1,7 +1,6 @@
+use crate::comet;
 use futures_util::{SinkExt, StreamExt};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 
 #[derive(Debug, Clone)]
@@ -21,70 +20,6 @@ struct SplitSocket {
     receiver: futures_util::stream::SplitStream<
         tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>,
     >,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", content = "payload", rename_all = "snake_case")]
-pub enum CometMessage {
-    Register {
-        state: String,
-    },
-    GetComponents {}, // TODO
-    PlayAudio {},     // TODO
-    AudioVolume {},   // TODO
-    AudioClear {},
-    ChatSetEmotes {
-        username: String,
-    },
-    Chat {
-        user_id: String,
-        chat: Vec<CometChatFragment>,
-        meta: CometChatMetadata,
-    },
-    ChatUser {
-        user_id: String,
-        chat_info: CometChatter,
-    },
-    ChatClear {
-        user_id: Option<String>,
-    },
-    Features {},
-}
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum CometChatFragment {
-    Text { content: String },
-    Emote { emote: String },
-}
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub struct CometChatter {
-    pub display_name: String,
-    pub name_color: String,
-    pub badges: Vec<String>,
-}
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CometChatMetadata {
-    None,
-    Action,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum CometResponse {
-    Ok {
-        state: String,
-    },
-    Data {
-        state: String,
-        payload: String,
-    },
-    Error {
-        state: String,
-        is_internal: bool,
-        message: String,
-    },
 }
 
 impl CometManager {
@@ -120,8 +55,8 @@ impl CometManager {
     }
     pub async fn send_message(
         &self,
-        message: &CometMessage,
-    ) -> Result<CometResponse, Box<dyn std::error::Error>> {
+        message: &comet::Message,
+    ) -> Result<comet::Response, Box<dyn std::error::Error>> {
         let outbound = serde_json::to_string(&message)?;
         self.0
             .lock()
@@ -156,7 +91,8 @@ impl CometManager {
 
             match inbound {
                 tokio_tungstenite::tungstenite::Message::Text(utf8_bytes) => {
-                    let response = serde_json::from_slice::<CometResponse>(utf8_bytes.as_bytes())?;
+                    let response =
+                        serde_json::from_slice::<comet::Response>(utf8_bytes.as_bytes())?;
                     return Ok(response);
                 }
                 tokio_tungstenite::tungstenite::Message::Ping(data) => {
