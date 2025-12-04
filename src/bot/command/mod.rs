@@ -20,6 +20,7 @@ pub fn builtin_commands() -> BuiltinCommands {
         Box::new(builtin::Crouton),
         Box::new(builtin::Corndog),
         Box::new(builtin::Comet),
+        Box::new(builtin::CometGetComponents),
     ];
 
     builtin_commands

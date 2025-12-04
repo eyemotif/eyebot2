@@ -206,3 +206,67 @@ impl Command for Comet {
         Ok(())
     }
 }
+
+pub(super) struct CometGetComponents;
+#[async_trait]
+#[async_trait]
+impl Command for CometGetComponents {
+    fn description(&self, _chat_message: &ChatMessage) -> Option<String> {
+        Some("A link to the source of the Corndogs".to_owned())
+    }
+    fn is_match(&self, chat_message: &ChatMessage) -> bool {
+        chat_message.message_text().starts_with("!comet:get")
+    }
+    async fn execute(
+        &self,
+        chat_message: &ChatMessage,
+        client: &mut EventSubClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let component_type = chat_message
+            .message_text()
+            .strip_prefix("!comet:get")
+            .expect("CometGetComponents: Checked by is_match")
+            .to_owned();
+        #[allow(clippy::single_match_else)] // there will be other component types in the future
+        let component_type = match component_type.to_ascii_lowercase().trim() {
+            "audio" => comet::ComponentType::Audio,
+            _ => {
+                if chat_message.chatter_is_moderator() {
+                    client
+                        .send_chat_message(
+                            format!("Unexpected component type \"{component_type}\""),
+                            Some(chat_message.message_id.clone()),
+                        )
+                        .await?;
+                }
+                return Ok(());
+            }
+        };
+
+        let response = client
+            .comet_manager
+            .send_message(&comet::Message::GetComponents { component_type })
+            .await?;
+        match response {
+            comet::Response::Ok { .. } => unreachable!("GetComponents will never respond Ok"),
+            comet::Response::Data { payload, .. } => {
+                client
+                    .send_chat_message(payload, Some(chat_message.message_id.clone()))
+                    .await?;
+            }
+            comet::Response::Error {
+                is_internal,
+                message,
+                ..
+            } => {
+                println!(
+                    "Comet error sending GetComponents message: {} {}",
+                    message,
+                    if is_internal { "(internal)" } else { "" }
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
